@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LocalMatch | Local Job & Skill Management Portal</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af',
+              800: '#1e3a8a',
+              900: '#172554',
+            },
+            emerald: {
+              500: '#10b981',
+              600: '#059669',
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+
+  <!-- Top Proximity Announcement Banner -->
+  <div class="bg-gradient-to-r from-blue-700 via-indigo-700 to-blue-800 text-white text-xs sm:text-sm font-medium py-2 px-4 shadow-sm">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center justify-center bg-blue-500/30 px-2 py-0.5 rounded text-blue-100 text-xs font-semibold uppercase tracking-wider">
+          <i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 inline"></i> GPS & Area Matching
+        </span>
+        <span class="hidden sm:inline">Connecting local talent with verified employers & demonstration vacancies across Indian districts.</span>
+        <span class="sm:hidden">Local job & skill matching portal.</span>
+      </div>
+      <div class="flex items-center gap-4 text-blue-200 text-xs">
+        <span id="stat-urgent" class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span> Urgent Vacancies</span>
+        <span class="hidden md:inline">•</span>
+        <span id="stat-demo-notice" class="hidden md:inline text-amber-200">Demonstration Dataset Active</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Navigation -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <i data-lucide="sparkles" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <span class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-700 to-indigo-800 bg-clip-text text-transparent">LocalMatch</span>
+          <span class="hidden sm:inline-block text-xs font-semibold text-slate-500 ml-2 px-2 py-0.5 bg-slate-100 rounded-full border border-slate-200">Job & Skill Portal</span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- My Profile & Skills Button -->
+        <button id="btn-open-profile" class="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer" title="Manage your personal profile and skills">
+          <i data-lucide="user" class="w-4 h-4 text-blue-600"></i>
+          <span class="hidden md:inline">My Profile</span>
+        </button>
+
+        <!-- Saved Jobs Button -->
+        <button id="btn-open-saved" class="relative inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer">
+          <i data-lucide="bookmark" class="w-4 h-4 text-slate-600"></i>
+          <span class="hidden sm:inline">Saved</span>
+          <span id="saved-count-badge" class="bg-blue-600 text-white text-[11px] px-1.5 py-0.2 rounded-full font-bold">0</span>
+        </button>
+
+        <!-- Post a Job Button -->
+        <button id="btn-open-post" class="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>Post a Job</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero & Location-Based Search Section -->
+  <section class="bg-gradient-to-b from-blue-50/70 to-white pt-8 pb-6 border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-3xl mx-auto mb-6">
+        <h1 class="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+          Find Local Jobs Matching <span class="text-blue-600">Your Skills & Proximity</span>
+        </h1>
+        <p class="mt-2 text-sm sm:text-base text-slate-600">
+          Select your local area or PIN code, search by GPS, and filter by skills. All salaries in Indian Rupees (₹) with real straight-line distance.
+        </p>
+      </div>
+
+      <!-- Main Search Box Container -->
+      <div class="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-200/80 p-4 sm:p-5 mb-5">
+        
+        <!-- Primary Row: Keywords, Select Area Dropdown, PIN Search, Radius & GPS -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+          
+          <!-- 1. Keyword / Title Search -->
+          <div class="md:col-span-3 relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="search" class="w-4 h-4"></i>
+            </div>
+            <input 
+              type="text" 
+              id="search-input" 
+              placeholder="Title, skill, company..." 
+              class="w-full pl-9 pr-8 py-2.5 bg-slate-50 focus:bg-white text-slate-900 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm font-medium transition-all"
+            >
+            <button id="clear-search-btn" class="hidden absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600" title="Clear query">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+
+          <!-- 2. Select Locality / Area Dropdown -->
+          <div class="md:col-span-3">
+            <select 
+              id="neighborhood-select" 
+              class="w-full py-2.5 px-3 bg-slate-50 focus:bg-white text-slate-800 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm font-semibold transition-all cursor-pointer"
+              title="Select Area / Neighborhood"
+            >
+              <option value="All">📍 Select Locality / Area (All)</option>
+              <!-- Populated dynamically by JS -->
+            </select>
+          </div>
+
+          <!-- 3. Manual PIN Code or City Text Input -->
+          <div class="md:col-span-2 relative">
+            <input 
+              type="text" 
+              id="manual-location-input" 
+              placeholder="Or PIN / Town..." 
+              list="location-datalist"
+              class="w-full px-3 py-2.5 bg-slate-50 focus:bg-white text-slate-900 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm font-medium transition-all"
+            >
+            <datalist id="location-datalist">
+              <option value="560001 (Bengaluru CBD)">
+              <option value="560034 (Koramangala)">
+              <option value="560038 (Indiranagar)">
+              <option value="560102 (HSR Layout)">
+              <option value="560066 (Whitefield)">
+              <option value="560058 (Peenya Industrial)">
+              <option value="560010 (Rajajinagar)">
+              <option value="560100 (Electronic City)">
+              <option value="560041 (Jayanagar)">
+              <option value="560003 (Malleshwaram)">
+              <option value="560024 (Hebbal)">
+              <option value="560076 (Bannerghatta Rd)">
+              <option value="570001 (Mysuru)">
+            </datalist>
+            <button id="clear-location-btn" class="hidden absolute inset-y-0 right-0 pr-2.5 flex items-center text-slate-400 hover:text-slate-600" title="Clear location">
+              <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>
+
+          <!-- 4. Search Radius Dropdown -->
+          <div class="md:col-span-2">
+            <select 
+              id="radius-select" 
+              class="w-full py-2.5 px-2.5 bg-slate-50 focus:bg-white text-slate-800 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs sm:text-sm font-semibold transition-all cursor-pointer"
+              title="Select Search Radius"
+            >
+              <option value="5">Radius: ≤ 5 km</option>
+              <option value="10">Radius: ≤ 10 km</option>
+              <option value="25" selected>Radius: ≤ 25 km</option>
+              <option value="50">Radius: ≤ 50 km</option>
+              <option value="100">Radius: ≤ 100 km</option>
+              <option value="0">Radius: Any</option>
+            </select>
+          </div>
+
+          <!-- 5. GPS & Search Buttons -->
+          <div class="md:col-span-2 flex items-center gap-1.5">
+            <!-- GPS Button -->
+            <button 
+              id="btn-use-gps" 
+              type="button"
+              class="flex-1 py-2.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-all shadow-xs cursor-pointer"
+              title="Use live GPS coordinates"
+            >
+              <i data-lucide="crosshair" class="w-3.5 h-3.5 text-emerald-600"></i>
+              <span id="gps-btn-label">GPS</span>
+            </button>
+
+            <!-- Search Button -->
+            <button 
+              id="trigger-search-btn" 
+              type="button"
+              class="py-2.5 px-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-1 shadow-sm transition-all cursor-pointer"
+              title="Search"
+            >
+              <i data-lucide="search" class="w-3.5 h-3.5"></i>
+              <span>Find</span>
+            </button>
+          </div>
+
+        </div>
+
+        <!-- Active Location Status Indicator Bar -->
+        <div id="location-status-bar" class="hidden mt-3 p-2.5 bg-blue-50/80 border border-blue-200 rounded-xl flex items-center justify-between text-xs text-blue-900">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-600 text-white font-bold text-[11px]">
+              <i data-lucide="map-pin" class="w-3 h-3"></i> <span id="loc-type-label">Location Set</span>
+            </span>
+            <span id="loc-display-name" class="font-semibold text-slate-800">Koramangala, Bengaluru</span>
+            <span id="loc-coords" class="text-slate-500 font-mono text-[11px]">(12.9352° N, 77.6245° E)</span>
+            <span class="text-slate-400">•</span>
+            <span id="loc-radius-display" class="font-semibold text-blue-700">Radius: ≤ 25 km</span>
+          </div>
+          <button id="btn-clear-active-location" class="inline-flex items-center gap-1 text-slate-500 hover:text-red-600 font-semibold text-xs ml-2 cursor-pointer">
+            <i data-lucide="x" class="w-3.5 h-3.5"></i> Clear Location
+          </button>
+        </div>
+
+        <!-- Location Error Box -->
+        <div id="location-error-bar" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-xs text-red-800">
+          <div class="flex items-center gap-2">
+            <i data-lucide="alert-circle" class="w-4 h-4 text-red-600 flex-shrink-0"></i>
+            <span id="location-error-msg">Unable to resolve location. Please verify spelling.</span>
+          </div>
+          <button id="btn-dismiss-loc-error" class="text-red-600 hover:text-red-800 font-bold ml-2 cursor-pointer">✕</button>
+        </div>
+
+        <!-- Secondary Filter Controls: All Dropdowns with Options -->
+        <div class="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+          
+          <div class="flex items-center gap-2 flex-wrap">
+            <!-- Sector Dropdown Option -->
+            <select id="category-select" class="py-1.5 px-2.5 bg-white text-slate-800 rounded-lg border border-slate-300 font-semibold text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer" title="Select Sector">
+              <option value="All">All Sectors</option>
+              <option value="Skilled Trades">🛠️ Skilled Trades</option>
+              <option value="Healthcare & Care">🩺 Healthcare & Care</option>
+              <option value="Hospitality & Food">☕ Hospitality & Dining</option>
+              <option value="Logistics & Warehouse">📦 Logistics & Warehouse</option>
+              <option value="Technology & Office">💻 Technology & Office</option>
+              <option value="General Labor">🌱 General Labor</option>
+            </select>
+
+            <!-- Job Type Dropdown Option -->
+            <select id="job-type-select" class="py-1.5 px-2.5 bg-white text-slate-800 rounded-lg border border-slate-300 font-semibold text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer" title="Select Job Type">
+              <option value="All">All Job Types</option>
+              <option value="Full-time">Full-time</option>
+              <option value="Part-time">Part-time</option>
+              <option value="Apprenticeship">Apprenticeship</option>
+              <option value="Gig / Shift">Gig / Shift</option>
+              <option value="Contract">Contract</option>
+            </select>
+
+            <!-- Min Salary Dropdown Option -->
+            <select id="min-salary-select" class="py-1.5 px-2.5 bg-white text-slate-800 rounded-lg border border-slate-300 font-semibold text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer" title="Select Minimum Salary">
+              <option value="0">Min Pay: Any</option>
+              <option value="15000">Min ₹15,000</option>
+              <option value="25000">Min ₹25,000</option>
+              <option value="35000">Min ₹35,000</option>
+              <option value="50000">Min ₹50,000</option>
+              <option value="75000">Min ₹75,000</option>
+              <option value="100000">Min ₹1,00,000</option>
+            </select>
+
+            <!-- Max Salary Dropdown Option -->
+            <select id="max-salary-select" class="py-1.5 px-2.5 bg-white text-slate-800 rounded-lg border border-slate-300 font-semibold text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer" title="Select Maximum Salary">
+              <option value="0">Max Pay: Any</option>
+              <option value="25000">Max ₹25,000</option>
+              <option value="40000">Max ₹40,000</option>
+              <option value="60000">Max ₹60,000</option>
+              <option value="100000">Max ₹1,00,000</option>
+              <option value="200000">Max ₹2,00,000</option>
+            </select>
+
+            <!-- Salary Period Option -->
+            <select id="salary-period-select" class="py-1.5 px-2 bg-white text-slate-800 rounded-lg border border-slate-300 font-semibold text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer" title="Select Salary Period">
+              <option value="all">Any Period</option>
+              <option value="month">/ Month</option>
+              <option value="year">/ Year</option>
+              <option value="day">/ Day</option>
+              <option value="hour">/ Hour</option>
+            </select>
+
+            <!-- Experience Level Option -->
+            <select id="experience-select" class="py-1.5 px-2.5 bg-white text-slate-800 rounded-lg border border-slate-300 font-semibold text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer" title="Select Experience Level">
+              <option value="All">All Experience</option>
+              <option value="No Experience Required">No Experience</option>
+              <option value="Entry Level">Entry Level</option>
+              <option value="Intermediate">Intermediate</option>
+              <option value="Expert">Expert</option>
+            </select>
+          </div>
+
+          <!-- Urgent Checkbox & Reset Button -->
+          <div class="flex items-center gap-3 ml-auto">
+            <label class="inline-flex items-center cursor-pointer select-none" title="Filter urgent immediate openings">
+              <input type="checkbox" id="urgent-toggle" class="sr-only peer">
+              <div class="w-8 h-4 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-amber-500"></div>
+              <span class="ml-1.5 text-xs font-semibold text-slate-700 flex items-center gap-1">
+                <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-500"></i> Urgent
+              </span>
+            </label>
+
+            <button id="reset-filters-btn" class="text-xs text-slate-500 hover:text-blue-600 underline font-semibold cursor-pointer">Reset All</button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Sector / Category Filter Buttons / Pills -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none" id="category-pills">
+        <button data-cat="All" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-900 text-white shadow-xs cursor-pointer">All Sectors</button>
+        <button data-cat="Skilled Trades" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer">🛠️ Skilled Trades</button>
+        <button data-cat="Healthcare & Care" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer">🩺 Healthcare & Care</button>
+        <button data-cat="Hospitality & Food" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer">☕ Hospitality & Dining</button>
+        <button data-cat="Logistics & Warehouse" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer">📦 Logistics & Warehouse</button>
+        <button data-cat="Technology & Office" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer">💻 Tech & Admin</button>
+        <button data-cat="General Labor" class="cat-pill px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 cursor-pointer">🌱 General Labor</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Interactive Skill Matching Dock -->
+  <section class="bg-white border-b border-slate-200 py-4 shadow-xs">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="bg-blue-50/70 rounded-xl border border-blue-200/80 p-4">
+        
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <div class="p-1.5 rounded-lg bg-blue-600 text-white">
+                <i data-lucide="cpu" class="w-4 h-4"></i>
+              </div>
+              <h2 class="text-sm font-bold text-slate-900">Skill-to-Job Matching Engine</h2>
+              <span class="text-xs bg-blue-100 text-blue-700 px-2.5 py-0.5 rounded-full font-semibold">Real-time Calculation</span>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">
+              Select or type the skills you possess. Job cards dynamically calculate your compatibility score and identify missing skill gaps.
+            </p>
+          </div>
+
+          <!-- Quick Presets -->
+          <div class="flex items-center gap-1.5 flex-wrap text-xs">
+            <span class="text-slate-500 font-semibold">Quick Profiles:</span>
+            <button class="preset-btn px-2.5 py-1 rounded-lg bg-white hover:bg-blue-100 border border-blue-200 text-blue-700 font-semibold cursor-pointer" data-preset="trades">Electrician / Trades</button>
+            <button class="preset-btn px-2.5 py-1 rounded-lg bg-white hover:bg-blue-100 border border-blue-200 text-blue-700 font-semibold cursor-pointer" data-preset="healthcare">CNA / Healthcare</button>
+            <button class="preset-btn px-2.5 py-1 rounded-lg bg-white hover:bg-blue-100 border border-blue-200 text-blue-700 font-semibold cursor-pointer" data-preset="hospitality">Barista & Food</button>
+            <button class="preset-btn px-2.5 py-1 rounded-lg bg-white hover:bg-blue-100 border border-blue-200 text-blue-700 font-semibold cursor-pointer" data-preset="tech">Tech & Support</button>
+            <button class="preset-btn px-2.5 py-1 rounded-lg bg-white hover:bg-blue-100 border border-blue-200 text-blue-700 font-semibold cursor-pointer" data-preset="warehouse">Warehouse & Forklift</button>
+            <button id="clear-skills-btn" class="px-2 py-1 rounded text-red-600 hover:bg-red-50 font-semibold cursor-pointer">Clear All</button>
+          </div>
+        </div>
+
+        <!-- Selected Skills Badges Container -->
+        <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-blue-100" id="selected-skills-container">
+          <!-- Active skills appear here -->
+          <span id="no-skills-msg" class="text-xs text-slate-400 italic">No skills selected yet. Select from the dropdown below or click popular skills to calculate match scores!</span>
+        </div>
+
+        <!-- Add Custom Skill: Select Option Dropdown + Text Input + Suggestions -->
+        <div class="mt-3 flex flex-wrap items-center gap-2.5">
+          
+          <!-- Skill Select Dropdown Option -->
+          <div class="relative">
+            <select id="skill-select-dropdown" class="py-1.5 px-3 bg-white text-slate-800 rounded-lg border border-slate-300 font-semibold text-xs focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer">
+              <option value="">➕ Select a Skill to Add...</option>
+              <!-- Populated by JS -->
+            </select>
+          </div>
+
+          <!-- Add Skill Text Input -->
+          <div class="relative flex-1 max-w-xs">
+            <input 
+              type="text" 
+              id="skill-input" 
+              placeholder="Or type skill (e.g. Electrical, Python)..." 
+              class="w-full pl-3 pr-12 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+            >
+            <button id="add-skill-btn" class="absolute inset-y-0 right-0 pr-2.5 flex items-center text-blue-600 hover:text-blue-800 font-bold text-xs cursor-pointer" title="Add skill">
+              + Add
+            </button>
+          </div>
+
+          <!-- Suggested Popular Skills List -->
+          <div class="flex items-center gap-1.5 flex-wrap overflow-x-auto text-xs" id="skill-suggestions">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content: Results & Filters -->
+  <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+    
+    <!-- Results Header / Controls -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-200">
+      <div class="flex items-center gap-2 flex-wrap">
+        <h2 class="text-lg font-bold text-slate-900">Nearby Vacancies</h2>
+        <span id="results-count" class="bg-slate-200 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">Loading...</span>
+        <span id="demo-indicator-badge" class="bg-amber-100 text-amber-800 text-[11px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+          <i data-lucide="info" class="w-3 h-3 text-amber-600"></i> Demonstration Records
+        </span>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <!-- Min Match Threshold Dropdown Option -->
+        <div class="flex items-center gap-1.5 text-xs">
+          <label for="match-threshold" class="font-semibold text-slate-600 whitespace-nowrap">Match Score:</label>
+          <select id="match-threshold" class="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+            <option value="0">All Match %</option>
+            <option value="50">50%+ Match</option>
+            <option value="75">75%+ Match</option>
+            <option value="100">100% Match</option>
+          </select>
+        </div>
+
+        <!-- Sort By Dropdown Option -->
+        <div class="flex items-center gap-1.5 text-xs">
+          <label for="sort-select" class="font-semibold text-slate-600 whitespace-nowrap">Sort by:</label>
+          <select id="sort-select" class="bg-white border border-slate-300 rounded-lg px-2.5 py-1 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer">
+            <option value="distance">Nearest Distance</option>
+            <option value="recent">Most Recent</option>
+            <option value="match">Highest Skill Match</option>
+            <option value="pay">Highest Salary (INR)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Filter Tags Display -->
+    <div id="active-filter-tags" class="flex flex-wrap items-center gap-2 mb-4">
+      <!-- Populated dynamically when filters are active -->
+    </div>
+
+    <!-- Job Cards Grid -->
+    <div id="job-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+      <!-- Dynamically populated job cards -->
+    </div>
+
+    <!-- Empty State Message -->
+    <div id="empty-state" class="hidden text-center py-16 bg-white rounded-2xl border border-slate-200 p-8 shadow-xs">
+      <div class="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="map-pin-off" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-xl font-bold text-slate-900 mb-1" id="empty-state-title">No jobs found near your selected location.</h3>
+      <p class="text-sm text-slate-500 max-w-lg mx-auto mb-6" id="empty-state-subtitle">
+        We could not find active vacancies matching your location and radius. Try expanding your search radius to 50 km or 100 km, or enter another village, town, or PIN code.
+      </p>
+      
+      <div class="flex items-center justify-center gap-3 flex-wrap">
+        <button id="btn-expand-50" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-xs cursor-pointer">
+          Expand Radius to 50 km
+        </button>
+        <button id="btn-expand-100" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors shadow-xs cursor-pointer">
+          Expand Radius to 100 km
+        </button>
+        <button id="btn-clear-loc-empty" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer">
+          Search All Locations
+        </button>
+        <button id="empty-reset-btn" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-600 rounded-xl text-xs sm:text-sm font-semibold transition-colors cursor-pointer">
+          Clear All Filters
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Candidate Profile Modal -->
+  <div id="profile-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-fade-in">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <div class="p-2 rounded-lg bg-blue-100 text-blue-700">
+            <i data-lucide="user-check" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-slate-900">Candidate Profile & Skill Management</h3>
+            <p class="text-xs text-slate-500">Record your qualifications to auto-fill applications & rank matches</p>
+          </div>
+        </div>
+        <button id="profile-close-btn" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="profile-form" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Full Name</label>
+          <input type="text" id="prof-name" placeholder="Pushpa K B" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email Address</label>
+            <input type="email" id="prof-email" placeholder="user@example.com" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Phone Number</label>
+            <input type="tel" id="prof-phone" placeholder="+91 98765 43210" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Highest Education</label>
+            <select id="prof-education" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
+              <option value="10th Standard / SSLC">10th Standard / SSLC</option>
+              <option value="12th / PUC / Intermediate">12th / PUC / Intermediate</option>
+              <option value="ITI / Vocational Certificate">ITI / Vocational Certificate</option>
+              <option value="Diploma / Polytechnic">Diploma / Polytechnic</option>
+              <option value="Bachelor's Degree (B.E./B.Tech/B.Sc/B.Com)" selected>Bachelor's Degree (B.E./B.Tech/B.Sc/B.Com)</option>
+              <option value="Master's / Postgraduate">Master's / Postgraduate</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Experience Level</label>
+            <select id="prof-experience" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
+              <option value="No Experience Required">Fresh Candidate / Fresher</option>
+              <option value="Entry Level">Entry Level (0-2 years)</option>
+              <option value="Intermediate" selected>Intermediate (2-5 years)</option>
+              <option value="Expert">Expert (5+ years)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Home Town / Area / PIN Code</label>
+          <input type="text" id="prof-location" placeholder="e.g. Koramangala, Bengaluru, 560095" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Active Skill Profile</label>
+          <div id="prof-skills-preview" class="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 flex flex-wrap gap-1.5 min-h-[44px]">
+            <!-- Synced dynamically -->
+          </div>
+          <span class="text-[11px] text-slate-400 mt-1 block">Your selected skills in the top dock are automatically synchronized here.</span>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+          <button type="button" id="profile-cancel-btn" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">Cancel</button>
+          <button type="submit" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm cursor-pointer">Save Profile</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Job Details Modal -->
+  <div id="job-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+      
+      <!-- Modal Header -->
+      <div class="p-6 border-b border-slate-100 flex items-start justify-between bg-slate-50/80">
+        <div>
+          <div class="flex items-center gap-2 flex-wrap mb-1.5">
+            <span id="modal-badge-urgent" class="hidden bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-bold flex items-center gap-1">
+              <i data-lucide="zap" class="w-3 h-3"></i> Immediate Start
+            </span>
+            <span id="modal-category" class="bg-slate-200 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">Category</span>
+            <span id="modal-job-type" class="bg-blue-100 text-blue-700 text-xs px-2.5 py-0.5 rounded-full font-semibold">Full-time</span>
+            <span id="modal-demo-tag" class="bg-amber-100 text-amber-800 border border-amber-300 text-xs px-2.5 py-0.5 rounded-full font-bold">📋 Demonstration Record</span>
+          </div>
+          <h3 id="modal-title" class="text-xl sm:text-2xl font-extrabold text-slate-900">Job Title</h3>
+          
+          <div class="flex items-center gap-2 text-xs sm:text-sm text-slate-600 mt-1.5 flex-wrap">
+            <span id="modal-company" class="font-bold text-slate-800">Company</span>
+            <span id="modal-verified-badge" class="text-blue-600 inline-flex items-center text-xs font-semibold" title="Verification Status">
+              <!-- Set by JS -->
+            </span>
+            <span>•</span>
+            <span id="modal-location" class="flex items-center gap-1 text-slate-600">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-500"></i> Location
+            </span>
+            <span>•</span>
+            <span id="modal-distance" class="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded">1.5 km away</span>
+          </div>
+        </div>
+
+        <button id="modal-close-btn" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-200/50 cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 overflow-y-auto space-y-5">
+        
+        <!-- Pay & Skill Match Assessment Box -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <div>
+            <span class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Salary & Compensation (INR)</span>
+            <div class="text-xl font-extrabold text-emerald-700 mt-0.5" id="modal-pay">₹28,000 – ₹38,000 / month</div>
+            <span class="text-xs text-slate-500" id="modal-pay-meta">Standard Indian Rupee payment</span>
+          </div>
+          <div id="modal-match-box" class="sm:border-l sm:border-slate-200 sm:pl-4">
+            <span class="text-xs text-slate-500 font-semibold uppercase tracking-wider">Your Skill Compatibility</span>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span id="modal-match-percent" class="text-xl font-extrabold text-blue-600">85%</span>
+              <span id="modal-match-label" class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Strong Match</span>
+            </div>
+            <span id="modal-match-detail" class="text-xs text-slate-500">Based on transparent match engine</span>
+          </div>
+        </div>
+
+        <!-- Demonstration Notice Banner if demo record -->
+        <div id="modal-demo-banner" class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2">
+          <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
+          <div>
+            <span class="font-bold">Demonstration Dataset Record:</span>
+            <span> This job is part of the local demonstration dataset for system testing, distance verification, and skill matching evaluation. It uses genuine Bengaluru workplace coordinates.</span>
+          </div>
+        </div>
+
+        <!-- Workplace Details & Coordinates -->
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1">
+          <div class="font-bold text-slate-700 flex items-center gap-1.5">
+            <i data-lucide="building" class="w-4 h-4 text-slate-500"></i> Workplace Information
+          </div>
+          <div class="text-slate-600"><span class="font-semibold text-slate-700">Complete Address:</span> <span id="modal-full-address">14th Main Rd, Sector 4, HSR Layout, Bengaluru, Karnataka, 560102</span></div>
+          <div class="text-slate-600"><span class="font-semibold text-slate-700">Workplace Coordinates:</span> <span id="modal-coords" class="font-mono text-[11px] text-blue-700">12.9121° N, 77.6446° E</span></div>
+          <div class="text-slate-600"><span class="font-semibold text-slate-700">Application Deadline:</span> <span id="modal-deadline" class="font-semibold text-slate-800">2026-11-30</span></div>
+        </div>
+
+        <!-- Description -->
+        <div>
+          <h4 class="text-sm font-bold text-slate-900 mb-2">Job Description & Responsibilities</h4>
+          <p id="modal-description" class="text-sm text-slate-600 leading-relaxed whitespace-pre-line"></p>
+        </div>
+
+        <!-- Skills Breakdown: You Have vs Missing Gap -->
+        <div>
+          <h4 class="text-sm font-bold text-slate-900 mb-2">Required Skills & Candidate Assessment</h4>
+          <div id="modal-required-skills" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- Preferred Bonus Skills -->
+        <div>
+          <h4 class="text-sm font-bold text-slate-900 mb-2">Preferred / Bonus Skills</h4>
+          <div id="modal-nice-skills" class="flex flex-wrap gap-2"></div>
+        </div>
+
+        <!-- Perks & Benefits -->
+        <div>
+          <h4 class="text-sm font-bold text-slate-900 mb-2">Perks & Benefits</h4>
+          <div id="modal-benefits" class="flex flex-wrap gap-2"></div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-between">
+        <button id="modal-save-btn" class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition-colors cursor-pointer">
+          <i data-lucide="bookmark" class="w-4 h-4"></i>
+          <span id="modal-save-text">Save Job</span>
+        </button>
+
+        <button id="modal-apply-btn" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-md shadow-blue-500/20 transition-all cursor-pointer">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          <span>Quick Apply Now</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Quick Apply Modal -->
+  <div id="apply-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden animate-fade-in">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Quick Apply</h3>
+          <p id="apply-job-subtitle" class="text-xs text-slate-500 mt-0.5">Position at Company</p>
+        </div>
+        <button id="apply-close-btn" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="apply-form" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Full Name *</label>
+          <input type="text" id="apply-name" required placeholder="Pushpa K B" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Email Address *</label>
+            <input type="email" id="apply-email" required placeholder="user@example.com" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Phone Number</label>
+            <input type="tel" id="apply-phone" placeholder="+91 98765 43210" class="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Education</label>
+            <input type="text" id="apply-education" placeholder="e.g. ITI, Diploma, B.E., Degree" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Experience</label>
+            <input type="text" id="apply-experience" placeholder="e.g. 2 years in field" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Attached Skills</label>
+          <div id="apply-skills-preview" class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600 flex flex-wrap gap-1.5">
+            <!-- Automatically attached from user's active skills -->
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Quick Note or Availability</label>
+          <textarea id="apply-message" rows="3" placeholder="Describe your immediate availability, local experience, or certifications..." class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-3">
+          <button type="button" id="apply-cancel-btn" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">Cancel</button>
+          <button type="submit" id="apply-submit-btn" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm cursor-pointer">Submit Application</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Post a Local Job Modal -->
+  <div id="post-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-fade-in">
+      
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div>
+          <h3 class="text-lg font-bold text-slate-900">Post a Local Job Listing</h3>
+          <p class="text-xs text-slate-500 mt-0.5">Reach skilled workers in your immediate Indian district or town</p>
+        </div>
+        <button id="post-close-btn" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="post-form" class="p-6 overflow-y-auto space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Job Title *</label>
+          <input type="text" id="post-title" required placeholder="e.g. Lead Residential Electrician" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Company / Business Name *</label>
+            <input type="text" id="post-company" required placeholder="e.g. SparkWorks Electrical" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Industry Sector *</label>
+            <select id="post-category" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
+              <option value="Skilled Trades">Skilled Trades</option>
+              <option value="Healthcare & Care">Healthcare & Care</option>
+              <option value="Hospitality & Food">Hospitality & Food</option>
+              <option value="Logistics & Warehouse">Logistics & Warehouse</option>
+              <option value="Technology & Office">Technology & Office</option>
+              <option value="General Labor">General Labor</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Workplace Address, City & PIN code -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Workplace Address *</label>
+            <input type="text" id="post-location" required placeholder="e.g. 14th Main Rd, Sector 4" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Locality / Area *</label>
+            <select id="post-neighborhood" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
+              <option value="Koramangala">Koramangala</option>
+              <option value="HSR Layout">HSR Layout</option>
+              <option value="Indiranagar">Indiranagar</option>
+              <option value="Whitefield">Whitefield</option>
+              <option value="Peenya Industrial Area">Peenya Industrial Area</option>
+              <option value="Rajajinagar">Rajajinagar</option>
+              <option value="Electronic City">Electronic City</option>
+              <option value="Jayanagar">Jayanagar</option>
+              <option value="Malleshwaram">Malleshwaram</option>
+              <option value="Hebbal">Hebbal</option>
+              <option value="Bannerghatta Road">Bannerghatta Road</option>
+              <option value="MG Road / CBD">MG Road / CBD</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">PIN Code *</label>
+            <input type="text" id="post-pincode" required placeholder="e.g. 560102" pattern="[0-9]{6}" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <!-- City & State -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">City / Town *</label>
+            <select id="post-city" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
+              <option value="Bengaluru" selected>Bengaluru</option>
+              <option value="Mysuru">Mysuru</option>
+              <option value="Hubli">Hubli</option>
+              <option value="Mangaluru">Mangaluru</option>
+              <option value="Belagavi">Belagavi</option>
+              <option value="Hassan">Hassan</option>
+              <option value="Tumakuru">Tumakuru</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">State *</label>
+            <input type="text" id="post-state" required value="Karnataka" placeholder="e.g. Karnataka" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <!-- Salary in INR (Min, Max, Period) -->
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+          <span class="block text-xs font-bold text-slate-700 uppercase tracking-wider">Salary in Indian Rupees (₹) *</span>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Min Salary (₹)</label>
+              <input type="number" id="post-salary-min" required placeholder="25000" class="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Max Salary (₹)</label>
+              <input type="number" id="post-salary-max" required placeholder="35000" class="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-1">Payment Period</label>
+              <select id="post-pay-period" class="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
+                <option value="month" selected>/ Month</option>
+                <option value="year">/ Year</option>
+                <option value="day">/ Day</option>
+                <option value="hour">/ Hour</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex items-center gap-4 text-xs text-slate-600">
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" id="post-negotiable" class="rounded border-slate-300 text-blue-600">
+              <span>Salary is Negotiable</span>
+            </label>
+            <label class="inline-flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" id="post-disclosed" checked class="rounded border-slate-300 text-blue-600">
+              <span>Disclose Salary Publicly</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Job Type *</label>
+            <select id="post-job-type" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
+              <option value="Full-time">Full-time</option>
+              <option value="Part-time">Part-time</option>
+              <option value="Apprenticeship">Apprenticeship</option>
+              <option value="Gig / Shift">Gig / Shift</option>
+              <option value="Contract">Contract</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Experience Required</label>
+            <select id="post-experience" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer">
+              <option value="No Experience Required">No Experience Required</option>
+              <option value="Entry Level">Entry Level</option>
+              <option value="Intermediate" selected>Intermediate</option>
+              <option value="Expert">Expert</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Required Skills (Comma-separated) *</label>
+          <input type="text" id="post-required-skills" required placeholder="e.g. Electrical Wiring, Circuit Breakers, Troubleshooting" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Contact Email *</label>
+            <input type="email" id="post-email" required placeholder="hiring@company.in" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Application Deadline</label>
+            <input type="date" id="post-deadline" value="2026-12-31" class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">Role Description *</label>
+          <textarea id="post-description" rows="3" required placeholder="Outline daily tasks, requirements, and what makes your workplace great..." class="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <input type="checkbox" id="post-urgent" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500">
+          <label for="post-urgent" class="text-xs font-semibold text-slate-700">Flag as Urgent / Immediate Start Available</label>
+        </div>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-3">
+          <button type="button" id="post-cancel-btn" class="px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer">Cancel</button>
+          <button type="submit" id="post-submit-btn" class="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-sm cursor-pointer">Publish Listing</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Saved Jobs Drawer Modal -->
+  <div id="saved-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full max-h-[80vh] flex flex-col overflow-hidden animate-fade-in">
+      <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center gap-2">
+          <i data-lucide="bookmark" class="w-5 h-5 text-blue-600"></i>
+          <h3 class="text-lg font-bold text-slate-900">Your Saved Jobs</h3>
+        </div>
+        <button id="saved-close-btn" class="p-2 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="saved-jobs-list" class="p-6 overflow-y-auto space-y-3 flex-1">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div id="toast-icon" class="text-emerald-400">
+      <i data-lucide="check-circle" class="w-5 h-5"></i>
+    </div>
+    <span id="toast-message" class="text-sm font-medium">Notification message</span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t border-slate-200 py-6 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+      <div class="flex items-center gap-2">
+        <span class="font-bold text-slate-700">LocalMatch</span> — Hyper-local Indian Job & Skill Matching Portal.
+      </div>
+      <div>
+        Real-time Haversine Distance • OpenStreetMap Geocoding • Indian Rupee (₹) Formatting
+      </div>
+    </div>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
