@@ -1487,13 +1487,26 @@ function setupEventListeners() {
     };
 
     try {
+      const submitBtn = document.getElementById("post-submit-btn");
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Publishing...";
+      }
+
       const res = await fetch("/api/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
-      if (res.ok) {
+      
+      let data = {};
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        data = { error: "Server returned a non-JSON response or empty response." };
+      }
+
+      if (res.ok && data.success) {
         postModal.classList.add("hidden");
         postForm.reset();
         showToast("Job listing published live with INR salary formatting!");
@@ -1503,7 +1516,13 @@ function setupEventListeners() {
       }
     } catch (err) {
       console.error(err);
-      alert("Error posting job");
+      alert("Error posting job: " + (err.message || "Network error. Please make sure the server is reachable."));
+    } finally {
+      const submitBtn = document.getElementById("post-submit-btn");
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Publish Listing";
+      }
     }
   });
 }
@@ -1548,4 +1567,107 @@ async function initAppData() {
 window.addEventListener("DOMContentLoaded", () => {
   setupEventListeners();
   initAppData();
+});
+/* FIX: Submit the Post a Job form to the Flask backend */
+
+postForm.addEventListener("submit", async function (event) {
+    event.preventDefault();
+
+    const submitButton = document.getElementById("post-submit-btn");
+    const originalText = submitButton.textContent;
+
+    const value = (id) =>
+        document.getElementById(id).value.trim();
+
+    const salaryMin = Number(value("post-salary-min"));
+    const salaryMax = Number(value("post-salary-max"));
+
+    if (salaryMin < 0 || salaryMax < salaryMin) {
+        showToast("Please check the salary range.", "warning");
+        return;
+    }
+
+    const jobData = {
+        title: value("post-title"),
+        company: value("post-company"),
+        category: value("post-category"),
+        location: value("post-location"),
+        neighborhood: value("post-neighborhood"),
+        pin_code: value("post-pincode"),
+        city: value("post-city"),
+        state: value("post-state"),
+
+        salary_min: salaryMin,
+        salary_max: salaryMax,
+        pay_period: value("post-pay-period"),
+        is_negotiable:
+            document.getElementById("post-negotiable").checked,
+        salary_disclosed:
+            document.getElementById("post-disclosed").checked,
+
+        job_type: value("post-job-type"),
+        employment_type: value("post-job-type"),
+        experience_level: value("post-experience"),
+
+        required_skills: value("post-required-skills")
+            .split(",")
+            .map(skill => skill.trim())
+            .filter(Boolean),
+
+        nice_to_have_skills: [],
+        contact_email: value("post-email"),
+        deadline: value("post-deadline"),
+        description: value("post-description"),
+        urgent: document.getElementById("post-urgent").checked
+    };
+
+    if (
+        !jobData.title ||
+        !jobData.company ||
+        !jobData.location ||
+        !jobData.contact_email ||
+        !jobData.description ||
+        jobData.required_skills.length === 0
+    ) {
+        showToast("Please complete all required fields.", "warning");
+        return;
+    }
+
+    submitButton.disabled = true;
+    submitButton.textContent = "Publishing...";
+
+    try {
+        const response = await fetch("/api/jobs", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(jobData)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+            throw new Error(
+                result.error || "Unable to publish this job."
+            );
+        }
+
+        postForm.reset();
+        postModal.classList.add("hidden");
+
+        // Reload listings from the backend.
+        clearActiveLocation();
+        await fetchJobs();
+
+        showToast("Job published successfully!");
+
+    } catch (error) {
+        console.error("Add Job failed:", error);
+        showToast(error.message || "Could not publish the job.", "warning");
+
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
+    }
 });

@@ -512,117 +512,153 @@ def get_job(job_id):
 
 @app.route("/api/jobs", methods=["POST"])
 def create_job():
-    data = request.json or {}
-    required_fields = ["title", "company", "category", "location", "contact_email", "description"]
-    for field in required_fields:
-        if not data.get(field):
-            return jsonify({"error": f"Missing required field: {field}"}), 400
+    try:
+        data = request.get_json(silent=True) or {}
+        required_fields = ["title", "company", "category", "location", "contact_email", "description"]
+        for field in required_fields:
+            if not data.get(field) or not str(data.get(field)).strip():
+                return jsonify({"error": f"Missing required field: {field}"}), 400
 
-    # Validate or geocode workplace coordinates
-    workplace_lat = None
-    workplace_lng = None
-    if data.get("latitude") and data.get("longitude"):
+        # Validate or geocode workplace coordinates
+        workplace_lat = None
+        workplace_lng = None
+        if data.get("latitude") and data.get("longitude"):
+            try:
+                workplace_lat = float(data["latitude"])
+                workplace_lng = float(data["longitude"])
+            except (ValueError, TypeError):
+                workplace_lat = None
+                workplace_lng = None
+
+        # Look up known coordinates for Bengaluru neighborhoods first for instant response
+        neighborhood_coords = {
+            "koramangala": (12.9352, 77.6245),
+            "hsr layout": (12.9121, 77.6446),
+            "indiranagar": (12.9719, 77.6412),
+            "whitefield": (12.9698, 77.7500),
+            "peenya industrial area": (13.0285, 77.5195),
+            "rajajinagar": (12.9982, 77.5530),
+            "electronic city": (12.8452, 77.6602),
+            "jayanagar": (12.9308, 77.5838),
+            "malleshwaram": (13.0031, 77.5643),
+            "hebbal": (13.0358, 77.5970),
+            "bannerghatta road": (12.8954, 77.5990),
+            "mg road / cbd": (12.9756, 77.6066),
+        }
+        
+        target_hood = str(data.get("neighborhood", "")).strip().lower()
+        if (workplace_lat is None or workplace_lng is None) and target_hood in neighborhood_coords:
+            workplace_lat, workplace_lng = neighborhood_coords[target_hood]
+
+        # If still not found, try Nominatim with short timeout
+        if workplace_lat is None or workplace_lng is None:
+            addr_to_geo = f"{data.get('neighborhood', '')}, {data.get('city', 'Bengaluru')}"
+            try:
+                encoded = urllib.parse.quote(addr_to_geo)
+                req = urllib.request.Request(
+                    f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&limit=1",
+                    headers={"User-Agent": "LocalJobSkillMatchingPortal/1.0"}
+                )
+                with urllib.request.urlopen(req, timeout=1.5) as resp:
+                    geo_data = json.loads(resp.read().decode("utf-8"))
+                    if geo_data:
+                        workplace_lat = float(geo_data[0]["lat"])
+                        workplace_lng = float(geo_data[0]["lon"])
+            except Exception:
+                pass
+
+        # Fallback to Bengaluru center if none matched
+        if workplace_lat is None or workplace_lng is None:
+            workplace_lat, workplace_lng = (12.9716, 77.5946)
+
         try:
-            workplace_lat = float(data["latitude"])
-            workplace_lng = float(data["longitude"])
+            salary_min = float(data.get("salary_min") or 0)
         except (ValueError, TypeError):
-            workplace_lat = None
-            workplace_lng = None
+            salary_min = 0.0
 
-    # If coordinates not provided, attempt geocoding workplace address
-    if workplace_lat is None or workplace_lng is None:
-        addr_to_geo = f"{data.get('location', '')}, {data.get('neighborhood', '')}, {data.get('city', 'Bengaluru')}, {data.get('pin_code', '')}"
         try:
-            encoded = urllib.parse.quote(addr_to_geo)
-            req = urllib.request.Request(
-                f"https://nominatim.openstreetmap.org/search?format=json&q={encoded}&limit=1",
-                headers={"User-Agent": "LocalJobSkillMatchingPortal/1.0"}
-            )
-            with urllib.request.urlopen(req, timeout=3) as resp:
-                geo_data = json.loads(resp.read().decode("utf-8"))
-                if geo_data:
-                    workplace_lat = float(geo_data[0]["lat"])
-                    workplace_lng = float(geo_data[0]["lon"])
-        except Exception:
-            pass
+            salary_max = float(data.get("salary_max") or 0)
+        except (ValueError, TypeError):
+            salary_max = 0.0
 
-    salary_min = float(data.get("salary_min") or 0)
-    salary_max = float(data.get("salary_max") or 0)
-    currency = "INR"
-    pay_period = data.get("pay_period", "month")
-    is_negotiable = 1 if data.get("is_negotiable") else 0
-    salary_disclosed = 0 if data.get("salary_disclosed") is False else 1
+        currency = "INR"
+        pay_period = data.get("pay_period", "month")
+        is_negotiable = 1 if data.get("is_negotiable") else 0
+        salary_disclosed = 0 if data.get("salary_disclosed") is False else 1
 
-    # Format INR pay display string
-    if not salary_disclosed:
-        pay_str = "Salary Not Disclosed"
-    elif is_negotiable and not salary_min and not salary_max:
-        pay_str = "Negotiable"
-    elif salary_min and salary_max:
-        pay_str = f"₹{int(salary_min):,} - ₹{int(salary_max):,}"
-    elif salary_min:
-        pay_str = f"₹{int(salary_min):,}"
-    elif salary_max:
-        pay_str = f"Up to ₹{int(salary_max):,}"
-    else:
-        pay_str = "Negotiable"
+        # Format INR pay display string
+        if not salary_disclosed:
+            pay_str = "Salary Not Disclosed"
+        elif is_negotiable and not salary_min and not salary_max:
+            pay_str = "Negotiable"
+        elif salary_min and salary_max:
+            pay_str = f"₹{int(salary_min):,} - ₹{int(salary_max):,}"
+        elif salary_min:
+            pay_str = f"₹{int(salary_min):,}"
+        elif salary_max:
+            pay_str = f"Up to ₹{int(salary_max):,}"
+        else:
+            pay_str = "Negotiable"
 
-    conn = get_db()
-    cursor = conn.cursor()
-    cursor.execute("""
-    INSERT INTO jobs (
-        title, company, category, location, neighborhood, city, state, pin_code,
-        latitude, longitude, distance_km, job_type, employment_type, pay, salary_min, salary_max,
-        currency, pay_period, is_negotiable, salary_disclosed, experience_level, urgent,
-        verified_employer, job_source, verification_status, status, contact_email,
-        application_url, deadline, expires_at, description, required_skills,
-        nice_to_have_skills, benefits, posted_date
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE)
-    """, (
-        data["title"].strip(),
-        data["company"].strip(),
-        data.get("category", "Skilled Trades"),
-        data["location"].strip(),
-        data.get("neighborhood", "").strip() or data["location"].strip(),
-        data.get("city", "Bengaluru").strip(),
-        data.get("state", "Karnataka").strip(),
-        data.get("pin_code", "").strip(),
-        workplace_lat,
-        workplace_lng,
-        float(data.get("distance_km", 2.0)),
-        data.get("job_type", "Full-time"),
-        data.get("employment_type", data.get("job_type", "Full-time")),
-        pay_str,
-        salary_min,
-        salary_max,
-        currency,
-        pay_period,
-        is_negotiable,
-        salary_disclosed,
-        data.get("experience_level", "Intermediate"),
-        1 if data.get("urgent") else 0,
-        0, # Unverified until employer verification review
-        "employer_posted",
-        "unverified",
-        "published",
-        data["contact_email"].strip(),
-        data.get("application_url", "").strip(),
-        data.get("deadline", "2026-12-31"),
-        data.get("expires_at", "2026-12-31"),
-        data["description"].strip(),
-        json.dumps(data.get("required_skills", [])),
-        json.dumps(data.get("nice_to_have_skills", [])),
-        json.dumps(data.get("benefits", ["Competitive Pay", "Local Team"])),
-    ))
-    new_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("""
+        INSERT INTO jobs (
+            title, company, category, location, neighborhood, city, state, pin_code,
+            latitude, longitude, distance_km, job_type, employment_type, pay, salary_min, salary_max,
+            currency, pay_period, is_negotiable, salary_disclosed, experience_level, urgent,
+            verified_employer, job_source, verification_status, status, contact_email,
+            application_url, deadline, expires_at, description, required_skills,
+            nice_to_have_skills, benefits, posted_date
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_DATE)
+        """, (
+            str(data["title"]).strip(),
+            str(data["company"]).strip(),
+            data.get("category", "Skilled Trades"),
+            str(data["location"]).strip(),
+            str(data.get("neighborhood", "")).strip() or str(data["location"]).strip(),
+            str(data.get("city", "Bengaluru")).strip(),
+            str(data.get("state", "Karnataka")).strip(),
+            str(data.get("pin_code", "")).strip(),
+            workplace_lat,
+            workplace_lng,
+            float(data.get("distance_km", 2.0)),
+            data.get("job_type", "Full-time"),
+            data.get("employment_type", data.get("job_type", "Full-time")),
+            pay_str,
+            salary_min,
+            salary_max,
+            currency,
+            pay_period,
+            is_negotiable,
+            salary_disclosed,
+            data.get("experience_level", "Intermediate"),
+            1 if data.get("urgent") else 0,
+            0, # Unverified until employer verification review
+            "employer_posted",
+            "unverified",
+            "published",
+            str(data["contact_email"]).strip(),
+            str(data.get("application_url", "")).strip(),
+            data.get("deadline", "2026-12-31"),
+            data.get("expires_at", "2026-12-31"),
+            str(data["description"]).strip(),
+            json.dumps(data.get("required_skills", [])),
+            json.dumps(data.get("nice_to_have_skills", [])),
+            json.dumps(data.get("benefits", ["Competitive Pay", "Local Team"])),
+        ))
+        new_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
 
-    return jsonify({
-        "success": True,
-        "job_id": new_id,
-        "message": "Job listing posted successfully! Identified as employer-submitted listing."
-    }), 201
+        return jsonify({
+            "success": True,
+            "job_id": new_id,
+            "message": "Job listing posted successfully! Identified as employer-submitted listing."
+        }), 201
+
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 @app.route("/api/jobs/<int:job_id>/apply", methods=["POST"])
 def apply_job(job_id):
